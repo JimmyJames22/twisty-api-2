@@ -37,6 +37,7 @@ from http.server import HTTPServer, BaseHTTPRequestHandler
 from urllib.parse import parse_qs
 import mysql.connector
 from user import User
+from mapmaster import MapMaster
 
 hostName = "0.0.0.0"
 serverPort = 3000
@@ -89,12 +90,15 @@ class Client(BaseHTTPRequestHandler):
                 self.send_header('Access-Control-Allow-Origin', '*')
                 self.end_headers()
                 self.wfile.write(bytes("No origin", "utf-8"))
-            if not url_params.__contains__('destination'):
+            elif not url_params.__contains__('destination'):
                 self.send_response(301)
                 self.send_header("Content-type", "text/html")
                 self.send_header('Access-Control-Allow-Origin', '*')
                 self.end_headers()
                 self.wfile.write(bytes("No origin", "utf-8"))
+            else:
+                mapmaster = MapMaster(url_params)
+                mapmaster.googleReq()
 
 
 
