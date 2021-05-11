@@ -1,22 +1,19 @@
 import json
+from flask import Response
 
 
 class User:
-    def __init__(self, url_params):
-        if url_params.__contains__("client_id"):
-            self.client_id = url_params["client_id"][0]
-        if url_params.__contains__("firstname"):
-            self.firstname = url_params["firstname"][0]
-        if url_params.__contains__("lastname"):
-            self.lastname = url_params["lastname"][0]
-        if url_params.__contains__("email"):
-            self.email = url_params["email"][0]
-        if url_params.__contains__("password"):
-            self.password = url_params["password"][0]
-        if url_params.__contains__("phone"):
-            self.phone = url_params["phone"][0]
-        if url_params.__contains__("addresses"):
-            self.addresses = json.loads(url_params["addresses"][0])
+    def __init__(self, params):
+        self.client_id = params["client_id"]
+        self.firstname = params["firstname"]
+        self.lastname = params["lastname"]
+        self.email = params["email"]
+        self.password = params["password"]
+        self.phone = params["phone"]
+        if params['addresses'] is None:
+            self.addresses = None
+        else:
+            self.addresses = json.loads(params["addresses"])
 
     def print_user(self):
         try:
@@ -54,7 +51,7 @@ class User:
         except AttributeError:
             pass
 
-    def get_user(self, client, con):
+    def get_user(self, con):
         check_cursor = con.cursor()
         check_query = "SELECT * FROM userlist WHERE clientid = %s"
         check_cursor.execute(check_query, [self.client_id])
@@ -69,30 +66,25 @@ class User:
         check_result += check_cursor.fetchall()
 
         if len(check_result) > 0:
-            client.send_response(200)
-            client.send_header("Content-type", "text/html")
-            client.send_header('Access-Control-Allow-Origin', '*')
-            client.end_headers()
-            client.wfile.write(bytes("<h2>User found</h2>", "utf-8"))
-            client.wfile.write(bytes("<h3>firstname: %s </h3>" % check_result[0][0], "utf-8"))
-            client.wfile.write(bytes("<h3>lastname: %s </h3>" % check_result[0][1], "utf-8"))
-            client.wfile.write(bytes("<h3>email: %s </h3>" % check_result[0][2], "utf-8"))
-            client.wfile.write(bytes("<h3>phone: %s </h3>" % check_result[0][3], "utf-8"))
-            client.wfile.write(bytes("<h3>password: %s </h3>" % check_result[1][1], "utf-8"))
-            for x in range(2, len(check_result)):
-                client.wfile.write(bytes("<h3>Address %s: %s </h3>" % (str(x-1), check_result[x][0]), "utf-8"))
-                client.wfile.write(bytes("<h5>address1: %s </h5>" % check_result[x][1], "utf-8"))
-                client.wfile.write(bytes("<h5>address2: %s </h5>" % check_result[x][2], "utf-8"))
-                client.wfile.write(bytes("<h5>city: %s </h5>" % check_result[x][3], "utf-8"))
-                client.wfile.write(bytes("<h5>state: %s </h5>" % check_result[x][4], "utf-8"))
-                client.wfile.write(bytes("<h5>zipcode: %s </h5>" % check_result[x][5], "utf-8"))
+            json = {'firstname': check_result[0][0], 'lastname': check_result[0][1], 'email': check_result[0][2],
+                    'phone': check_result[0][3], 'password': check_result[1][1]}
 
+            addresses = []
+            for x in range(2, len(check_result)):
+                address = {'description': check_result[x][0], 'address_1': check_result[x][1],
+                           'address_2': check_result[x][2], 'city': check_result[x][3], 'state': check_result[x][4],
+                           'zipcode': check_result[x][5]}
+                addresses.append(address)
+
+            json['addresses'] = addresses
+
+            print(json)
+
+            resp = Response(json)
+            return resp
         else:
-            client.send_response(400)
-            client.send_header("Content-type", "text/html")
-            client.send_header('Access-Control-Allow-Origin', '*')
-            client.end_headers()
-            client.wfile.write(bytes("No user found", "utf-8"))
+            resp = Response('No user found')
+            return resp
 
     def post_user(self, client, con):
         check_cursor = con.cursor()
