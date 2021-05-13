@@ -92,5 +92,5 @@ def user():
 
 
 if __name__ == '__main__':
-    app.run(ssl_context=('Ssl/cert.crt', 'Ssl/key.pem'), host='0.0.0.0', port=4443)
+    app.run(ssl_context=('ssl/cert.crt', 'ssl/key.pem'), host='0.0.0.0', port=4443)
 # ewregu
