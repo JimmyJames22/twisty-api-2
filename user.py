@@ -1,4 +1,6 @@
 import json
+
+import mysql.connector
 from flask import Response
 
 
@@ -51,7 +53,13 @@ class User:
         except AttributeError:
             pass
 
-    def get_user(self, con):
+    def get_user(self):
+        con = mysql.connector.connect(
+            host="localhost",
+            user="root",
+            database="users"
+        )
+
         check_cursor = con.cursor()
         check_query = "SELECT * FROM userlist WHERE clientid = %s"
         check_cursor.execute(check_query, [self.client_id])
@@ -78,15 +86,19 @@ class User:
 
             json['addresses'] = addresses
 
-            print(json)
-
-            resp = Response(json)
+            resp = Response(json.__str__())
             return resp
         else:
-            resp = Response('No user found')
+            resp = Response('No user found', 404)
             return resp
 
-    def post_user(self, client, con):
+    def post_user(self):
+        con = mysql.connector.connect(
+            host="localhost",
+            user="root",
+            database="users"
+        )
+
         check_cursor = con.cursor()
         check_query = "SELECT clientid FROM userlist WHERE email = %s"
         check_cursor.execute(check_query, [self.email])
@@ -94,12 +106,8 @@ class User:
         check_result = check_cursor.fetchall()
 
         if len(check_result) > 0:
-            client.send_response(299)
-            client.send_header("Content-type", "text/html")
-            client.send_header('Access-Control-Allow-Origin', '*')
-            client.end_headers()
-            client.wfile.write(bytes("Email not unique", "utf-8"))
-            return
+            resp = Response('Email is not unique', 404)
+            return resp
 
         user_cursor = con.cursor()
         user_list = "INSERT INTO userlist (firstname, lastname, email, phone) VALUES (%s, %s, %s, %s)"
@@ -121,66 +129,135 @@ class User:
 
         con.commit()
 
-        client.send_response(200)
-        client.send_header("Content-type", "text/html")
-        client.send_header('Access-Control-Allow-Origin', '*')
-        client.end_headers()
-        client.wfile.write(bytes("User created!", "utf-8"))
+        json = {'client_id': self.client_id, 'firstname': self.firstname, 'lastname': self.lastname, 'email': self.email, 'phone': self.phone,
+                'password': self.password, 'addresses': self.addresses}
 
-    def put_user(self, client, con):
+        resp = Response(str(json))
+        return resp
+
+    def put_user(self):
+        con = mysql.connector.connect(
+            host="localhost",
+            user="root",
+            database="users"
+        )
+
         cursor = con.cursor()
 
-        if hasattr(self, 'firstname'):
-            query = "UPDATE userlist SET firstname = %s WHERE clientid = %s"
-            cursor.execute(query, [self.firstname, self.client_id])
-            con.commit()
-            print(cursor.rowcount, "record(s) affected FIRSTNAME")
+        vals_updated = []
+        addresses_added = 0
+        addresses_deleted = 0
 
-        if hasattr(self, 'lastname'):
-            query = "UPDATE userlist SET lastname = %s WHERE clientid = %s"
-            cursor.execute(query, [self.lastname, self.client_id])
-            con.commit()
-            print(cursor.rowcount, "record(s) affected LASTNAME")
+        id_query = "SELECT firstname FROM userlist WHERE clientid = %s"
+        cursor.execute(id_query, [self.client_id])
+        id_result = cursor.fetchall()
+        if len(id_result) != 1:
+            resp = Response('Invalid client_id', 404)
+            return resp
 
-        if hasattr(self, 'email'):
-            query = "UPDATE userlist SET email = %s WHERE clientid =                   %s"
+        if self.email is not None:
+            check_query = "SELECT clientid FROM userlist WHERE email = %s"
+            cursor.execute(check_query, [self.email])
+            check_result = cursor.fetchall()
+            if len(check_result) > 0:
+                resp = Response('Email is not unique', 404)
+                return resp
+            query = "UPDATE userlist SET email = %s WHERE clientid = %s"
             cursor.execute(query, [self.email, self.client_id])
             con.commit()
-            print(cursor.rowcount, "record(s) affected EMAIL1")
             query = "UPDATE userlogin SET email = %s WHERE clientid = %s"
             cursor.execute(query, [self.email, self.client_id])
             con.commit()
-            print(cursor.rowcount, "record(s) affected EMAIL2")
-
-        if hasattr(self, 'password'):
+            vals_updated.append('EMAIL')
+        if self.firstname is not None:
+            query = "UPDATE userlist SET firstname = %s WHERE clientid = %s"
+            cursor.execute(query, [self.firstname, self.client_id])
+            con.commit()
+            vals_updated.append('FIRSTNAME')
+        if self.lastname is not None:
+            query = "UPDATE userlist SET lastname = %s WHERE clientid = %s"
+            cursor.execute(query, [self.lastname, self.client_id])
+            con.commit()
+            vals_updated.append('LASTNAME')
+        if self.password is not None:
             query = "UPDATE userlogin SET password = %s WHERE clientid = %s"
             cursor.execute(query, [self.password, self.client_id])
             con.commit()
-            print(cursor.rowcount, "record(s) affected PASSWORD")
-
-        if hasattr(self, 'phone'):
+            vals_updated.append('PASSWORD')
+        if self.phone is not None:
             query = "UPDATE userlist SET phone = %s WHERE clientid = %s"
             cursor.execute(query, [self.phone, self.client_id])
             con.commit()
-            print(cursor.rowcount, "record(s) affected PHONE")
-
+            vals_updated.append('PHONE')
         for address in self.addresses:
-            if address[len(address)-1] == "ADD":
-                address.pop(len(address)-1)
+            if address[len(address) - 1] == "ADD":
+                address.pop(len(address) - 1)
                 address.append(self.client_id)
                 query = "INSERT INTO useraddresses (description, streetAddress1, streetAddress2, city, state, zipcode, clientid) VALUES (%s, %s, %s, %s, %s, %s, %s)"
                 cursor.execute(query, address)
                 con.commit()
-                print("ADDRESS INSERTED")
-            elif address[len(address)-1] == "DELETE":
-                address.pop(len(address)-1)
+                addresses_added += 1
+            elif address[len(address) - 1] == "DELETE":
+                address.pop(len(address) - 1)
                 query = "DELETE FROM useraddresses WHERE description = %s"
                 cursor.execute(query, address)
                 con.commit()
-                print("ADDRESS DELETED")
-        client.send_response(200)
-        client.send_header("Content-type", "text/html")
-        client.send_header('Access-Control-Allow-Origin', '*')
-        client.end_headers()
-        client.wfile.write(bytes("Values updated", "utf-8"))
+                addresses_deleted += 1
 
+        resp_string = "Values changed: "
+        for x in range(0, len(vals_updated)):
+            if x != len(vals_updated) - 1:
+                vals_updated[x] += ', '
+            resp_string += vals_updated[x]
+        resp_string += '; Addresses added: '
+        resp_string += str(addresses_added)
+        resp_string += '; Addresses deleted: '
+        resp_string += str(addresses_deleted)
+
+        resp = Response(resp_string, 200)
+        return resp
+
+    def delete_user(self):
+        con = mysql.connector.connect(
+            host="localhost",
+            user="root",
+            database="users"
+        )
+
+        cursor = con.cursor()
+
+        name_query = "SELECT firstname FROM userlist WHERE clientid = %s"
+        cursor.execute(name_query, [self.client_id])
+        name_result = cursor.fetchall()
+
+        name_query = "SELECT lastname FROM userlist WHERE clientid = %s"
+        cursor.execute(name_query, [self.client_id])
+        name_result += cursor.fetchall()
+
+        if len(name_result) == 2:
+            firstname = name_result[0][0]
+            lastname = name_result[1][0]
+        else:
+            resp = Response("Invalid client_id", 404)
+            return resp
+
+        userlist_query = "DELETE FROM userlist WHERE clientid = %s"
+        cursor.execute(userlist_query, [self.client_id])
+
+        useraddresses_query = "DELETE FROM useraddresses WHERE clientid = %s"
+        cursor.execute(useraddresses_query, [self.client_id])
+
+        userhistory_query = "DELETE FROM userhistory WHERE clientid = %s"
+        cursor.execute(userhistory_query, [self.client_id])
+
+        userlogin_query = "DELETE FROM userlogin WHERE clientid = %s"
+        cursor.execute(userlogin_query, [self.client_id])
+
+        usersettings_query = "DELETE FROM usersettings WHERE clientid = %s"
+        cursor.execute(usersettings_query, [self.client_id])
+
+        con.commit()
+
+        resp_string = {'firstname': firstname, 'lastname': lastname}
+        resp = Response(str(resp_string), 200)
+        return resp

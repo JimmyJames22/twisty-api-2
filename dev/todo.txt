@@ -1,0 +1,3 @@
+ - Reformat endpoint of each path so it spits back JSON
+ - Hash passwords
+ - Routing engine calls
