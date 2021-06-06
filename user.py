@@ -89,7 +89,8 @@ class User:
             resp = Response(json.__str__())
             return resp
         else:
-            resp = Response('No user found', 404)
+            resp_error = {'Method': 'GET', 'Error': 'Invalid client_id'}
+            resp = Response(str(resp_error), 404)
             return resp
 
     def post_user(self):
@@ -106,7 +107,8 @@ class User:
         check_result = check_cursor.fetchall()
 
         if len(check_result) > 0:
-            resp = Response('Email is not unique', 404)
+            resp_error = {'Method': 'POST', 'Error': 'Email not unique'}
+            resp = Response(str(resp_error), 404)
             return resp
 
         user_cursor = con.cursor()
@@ -129,10 +131,10 @@ class User:
 
         con.commit()
 
-        json = {'client_id': self.client_id, 'firstname': self.firstname, 'lastname': self.lastname, 'email': self.email, 'phone': self.phone,
+        json = {'Method': 'POST', 'client_id': self.client_id, 'firstname': self.firstname, 'lastname': self.lastname, 'email': self.email, 'phone': self.phone,
                 'password': self.password, 'addresses': self.addresses}
 
-        resp = Response(str(json))
+        resp = Response(str(json), 200)
         return resp
 
     def put_user(self):
@@ -152,7 +154,8 @@ class User:
         cursor.execute(id_query, [self.client_id])
         id_result = cursor.fetchall()
         if len(id_result) != 1:
-            resp = Response('Invalid client_id', 404)
+            resp_error = {'Method': 'PUT', 'Error': 'Invalid client_id'}
+            resp = Response(str(resp_error), 404)
             return resp
 
         if self.email is not None:
@@ -160,7 +163,8 @@ class User:
             cursor.execute(check_query, [self.email])
             check_result = cursor.fetchall()
             if len(check_result) > 0:
-                resp = Response('Email is not unique', 404)
+                resp_error = {'Method': 'PUT', 'Error': 'Email not unique'}
+                resp = Response(str(resp_error), 404)
                 return resp
             query = "UPDATE userlist SET email = %s WHERE clientid = %s"
             cursor.execute(query, [self.email, self.client_id])
@@ -204,17 +208,10 @@ class User:
                 con.commit()
                 addresses_deleted += 1
 
-        resp_string = "Values changed: "
-        for x in range(0, len(vals_updated)):
-            if x != len(vals_updated) - 1:
-                vals_updated[x] += ', '
-            resp_string += vals_updated[x]
-        resp_string += '; Addresses added: '
-        resp_string += str(addresses_added)
-        resp_string += '; Addresses deleted: '
-        resp_string += str(addresses_deleted)
+        resp_string = {'Method': 'PUT', "Values changed": vals_updated, 'Addresses updated': addresses_added,
+                       'addresses deleted': addresses_deleted}
 
-        resp = Response(resp_string, 200)
+        resp = Response(str(resp_string), 200)
         return resp
 
     def delete_user(self):
@@ -238,7 +235,8 @@ class User:
             firstname = name_result[0][0]
             lastname = name_result[1][0]
         else:
-            resp = Response("Invalid client_id", 404)
+            resp_error = {'Method': 'DELETE', 'Error': 'Invalid client_id'}
+            resp = Response(str(resp_error), 404)
             return resp
 
         userlist_query = "DELETE FROM userlist WHERE clientid = %s"
@@ -258,6 +256,6 @@ class User:
 
         con.commit()
 
-        resp_string = {'firstname': firstname, 'lastname': lastname}
+        resp_string = {'method': 'DELETE', 'firstname': firstname, 'lastname': lastname}
         resp = Response(str(resp_string), 200)
         return resp
