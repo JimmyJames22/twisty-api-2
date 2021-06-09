@@ -4,7 +4,7 @@ function getUser(){
     let xhttp = new XMLHttpRequest();
     
 
-    xhttp.open("POST", "https://twistyroads.tk/user", true);
+    xhttp.open("GET", "https://twistyroads.tk/user?email=jameselliottmillington@gmail.com&password=sillystrin", true);
     xhttp.setRequestHeader("Content-type", "application/json")
     xhttp.send();
 

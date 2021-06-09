@@ -16,6 +16,7 @@ api = Api(app)
 
 @app.route('/route', methods=['GET'])
 def route():
+    # create object to hold request params
     params = {
         'client_id': request.args.get('client_id'),
         'origin': request.args.get('origin'),
@@ -24,6 +25,7 @@ def route():
         'avoid': request.args.get('avoid')
     }
 
+    # check for missing params
     errors = []
     param_error = False
 
@@ -37,11 +39,13 @@ def route():
         errors.append("destination")
         param_error = True
 
+    # write back missing params
     if param_error:
         error_string = {'Method': 'POST', 'Error': {'Missing': errors}}
         resp = Response(str(error_string), 404)
         resp.headers['Access-Control-Allow-Origin'] = '*'
         return resp
+    # create routes if no missing params
     else:
         map_master = MapMaster(params)
         resp = map_master.get_route()
@@ -51,28 +55,47 @@ def route():
 
 @app.route('/user', methods=['GET', 'POST', 'PUT', 'DELETE'])
 def user():
+    # create object to hold request params
     params = {
         'client_id': request.args.get('client_id'),
         'firstname': request.args.get('firstname'),
         'lastname': request.args.get('lastname'),
         'email': request.args.get('email'),
+        'old_email': request.args.ger('old_email'),
         'password': request.args.get('password'),
+        'old_password': request.args.get('old_password'),
         'phone': request.args.get('phone'),
         'addresses': request.args.get('addresses')
     }
 
+    # handle GET request
     if request.method == 'GET':
-        if params['client_id'] is None:
-            resp_error = {'Method': 'GET', 'Error': {'Missing': ['client_id']}}
-            resp = Response(str(resp_error), 404)
+        # check for missing params
+        errors = []
+        param_error = False
+        if params['email'] is None:
+            errors.append("email")
+            param_error = True
+        if params['password'] is None:
+            errors.append("password")
+            param_error = True
+
+        # write back missing params
+        if param_error:
+            error_string = {'Method': 'POST', 'Error': {'Missing': errors}}
+            resp = Response(str(error_string), 404)
             resp.headers['Access-Control-Allow-Origin'] = '*'
             return resp
+        # create routes if no missing params
         else:
-            user = User(params)
-            resp = user.get_user()
+            user_obj = User(params)
+            resp = user_obj.get_user()
             resp.headers['Access-Control-Allow-Origin'] = '*'
             return resp
+
+    # handle POST request
     elif request.method == 'POST':
+        # check for missing params
         errors = []
         param_error = False
 
@@ -91,32 +114,65 @@ def user():
         if params['addresses'] is None:
             errors.append('addresses')
             param_error = True
+
+        # write back missing params
         if param_error:
             error_string = {'Method': 'POST', 'Error': {'Missing': errors}}
             resp = Response(str(error_string), 404)
             resp.headers['Access-Control-Allow-Origin'] = '*'
             return resp
+        # create routes if no missing params
         else:
-            user = User(params)
-            resp = user.post_user()
+            user_obj = User(params)
+            resp = user_obj.post_user()
             resp.headers['Access-Control-Allow-Origin'] = '*'
             return resp
+
+    # handle PUT request
     elif request.method == 'PUT':
-        if params['client_id']:
-            user = User(params)
-            resp = user.put_user()
+        # check for missing params
+        errors = []
+        param_error = False
+        if params['old_email'] is None:
+            errors.append("old_email")
+            param_error = True
+        if params['old_password'] is None:
+            errors.append("old_password")
+            param_error = True
+
+        # write back missing params
+        if param_error:
+            error_string = {'Method': 'POST', 'Error': {'Missing': errors}}
+            resp = Response(str(error_string), 404)
             resp.headers['Access-Control-Allow-Origin'] = '*'
             return resp
+        # create routes if no missing params
         else:
             resp_error = {'Method': 'PUT', 'Error': {'Missing': ['client_id']}}
             resp = Response(str(resp_error), 404)
             resp.headers['Access-Control-Allow-Origin'] = '*'
             return resp
+
+    # handle DELETE request
     elif request.method == 'DELETE':
-        if params['client_id']:
-            user = User(params)
-            resp = user.delete_user()
+        # check for missing params
+        errors = []
+        param_error = False
+
+        if params['email'] is None:
+            errors.append("email")
+            param_error = True
+        if params['password'] is None:
+            errors.append("password")
+            param_error = True
+
+        # write back missing params
+        if param_error:
+            error_string = {'Method': 'POST', 'Error': {'Missing': errors}}
+            resp = Response(str(error_string), 404)
+            resp.headers['Access-Control-Allow-Origin'] = '*'
             return resp
+        # create routes if no missing params
         else:
             resp_error = {'Method': 'DELETE', 'Error': {'Missing': ['client_id']}}
             resp = Response(str(resp_error), 404)

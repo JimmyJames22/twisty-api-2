@@ -8,7 +8,8 @@ class Route:
         self.distance = None
         self.duration = None
         self.coords = []
-        self.rating = None
+        self.rating = 0
+        self.slopes = []
 
     def google_init(self, route):
         self.coords = self.decode_polyline(route["overview_polyline"]["points"])
@@ -16,6 +17,7 @@ class Route:
         self.distance = route["distance"]
         self.duration = route["duration"]
         self.add_elev()
+        self.calc_slopes()
         return self
 
     def bing_init(self, route):
@@ -23,6 +25,7 @@ class Route:
         self.duration = route["travelDurationTraffic"]
         self.coords = route["routePath"]["line"]["coordinates"]
         self.add_elev()
+        self.calc_slopes()
         return self
 
     def add_elev(self):
@@ -57,6 +60,29 @@ class Route:
 
         for x in range(0, len(elevs)):
             self.coords[x].append(elevs[x])
+
+    def calc_slopes(self):
+        for i in range(1, len(self.coords)):
+            coord = self.coords[i]
+            last_coord = self.coords[i-1]
+
+            slope = ((((coord[0] - last_coord[0]) ** 2) + ((coord[1] - last_coord[1]) ** 2)) + ((coord[2] + last_coord[2]) ** 2)) ** 0.5
+
+            self.slopes.append(slope)
+
+        max_slope = self.slopes[0]
+        for i in range(1, len(self.slopes)):
+            self.rating += abs(self.slopes[i] - self.slopes[i-1])
+
+            if self.slopes[i] > max_slope:
+                max_slope = self.slopes[i]
+
+        self.rating /= len(self.slopes)
+
+        self.coords[0].append((self.slopes[0]/max_slope)*255)
+
+        for i in range(1, len(self.coords)):
+            self.coords[i].append((self.slopes[i-1] / max_slope) * 255)
 
     def decode_polyline(self, polyline_str):
         # Pass a Google Maps encoded polyline string; returns list of lat/lon pairs

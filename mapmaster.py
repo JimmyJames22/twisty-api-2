@@ -29,7 +29,6 @@ class MapMaster:
     def get_route(self):
         self.form_reqs()
         self.make_routes()
-        self.add_elev()
         resp = Response(json.dumps(str(self.routes)), 200)
         return resp
 
@@ -73,3 +72,4 @@ class MapMaster:
     def add_elev(self):
         for route in self.routes:
             print(route.coords)
+            print(route.rating)
